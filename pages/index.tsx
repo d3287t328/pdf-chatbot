@@ -10,11 +10,7 @@ import { useRouter } from 'next/router';
 import { useSession, signOut } from 'next-auth/react';
 import LoadingState from '@/components/other/LoadingState';
 import { Dialog, Transition } from '@headlessui/react';
-import {
-  Bars3Icon,
-  Cog6ToothIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
+import { Bars3Icon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { PlusCircleIcon } from '@heroicons/react/20/solid';
 import ListOfNamespaces from '@/components/sidebar/ListOfNamespaces';
 import ListOfChats from '@/components/sidebar/ListOfChats';
@@ -22,23 +18,17 @@ import ProfileDropdown from '@/components/other/ProfileDropdown';
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const router = useRouter();
   const [query, setQuery] = useState<string>('');
   const [chatId, setChatId] = useState<string>('1');
-
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated: () => router.push('/login'),
   });
-
   const [userEmail, setUserEmail] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [userImage, setUserImage] = useState<string>('');
-
-  const { namespaces, selectedNamespace, setSelectedNamespace } =
-    useNamespaces(userEmail);
-
+  const { namespaces, selectedNamespace, setSelectedNamespace } = useNamespaces(userEmail);
   const {
     chatList,
     selectedChatId,
@@ -48,9 +38,7 @@ export default function Home() {
     chatNames,
     updateChatName,
   } = useChats(selectedNamespace, userEmail);
-
   const nameSpaceHasChats = chatList.length > 0;
-
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [messageState, setMessageState] = useState<{
@@ -67,9 +55,7 @@ export default function Home() {
     ],
     history: [],
   });
-
   const { messages, history } = messageState;
-
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,19 +65,37 @@ export default function Home() {
         `/api/history?chatId=${selectedChatId}&userEmail=${userEmail}`,
       );
       const data = await response.json();
-
       const pairedMessages: [any, any][] = [];
-
       for (let i = 0; i < data.length; i += 2) {
         pairedMessages.push([data[i], data[i + 1]]);
       }
-
       setMessageState((state) => ({
         ...state,
         messages: data.map((message: any) => ({
           type: message.sender === 'user' ? 'userMessage' : 'apiMessage',
           message: message.content,
         })),
+        history: pairedMessages.map(([userMessage, botMessage]: any) => [
+          userMessage.content,
+          botMessage?.content ||
+  const fetchChatHistory = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/history?chatId=${selectedChatId}&userEmail=${userEmail}`,
+      );
+      const data = await response.json();
+      const pairedMessages: [any, any][] = [];
+      for (let i = 0; i < data.length; i += 2) {
+        pairedMessages.push([data[i], data[i + 1]]);
+      }
+      setMessageState((state) => ({
+        ...state,
+        messages: Array.isArray(data)
+          ? data.map((message: any) => ({
+              type: message.sender === 'user' ? 'userMessage' : 'apiMessage',
+              message: message.content,
+            }))
+          : [],
         history: pairedMessages.map(([userMessage, botMessage]: any) => [
           userMessage.content,
           botMessage?.content || '',
@@ -103,7 +107,7 @@ export default function Home() {
   }, [selectedChatId, userEmail]);
 
   useEffect(() => {
-    console.log('selectednce', selectedNamespace);
+    console.log('selectedNamespace', selectedNamespace);
   }, [selectedNamespace]);
 
   useEffect(() => {
@@ -178,25 +182,30 @@ export default function Home() {
       });
       const data = await response.json();
 
-      if (data.error) {
-        setError(data.error);
-      } else {
+      if (Array.isArray(data)) {
+        const pairedMessages: [any, any][] = [];
+        for (let i = 0; i < data.length; i += 2) {
+          pairedMessages.push([data[i], data[i + 1]]);
+        }
+
         setMessageState((state) => ({
           ...state,
-          messages: [
-            ...state.messages,
-            {
-              type: 'apiMessage',
-              message: data.text,
-              sourceDocs: data.sourceDocuments,
-            },
-          ],
-          history: [...state.history, [question, data.text]],
+          messages: data.map((message: any) => ({
+            type: message.sender === 'user' ? 'userMessage' : 'apiMessage',
+            message: message.content,
+          })),
+          history: pairedMessages.map(([userMessage, botMessage]: any) => [
+            userMessage.content,
+            botMessage?.content || '',
+          ]),
         }));
+      } else {
+        console.error('Invalid data format:', data);
       }
 
       setLoading(false);
 
+      messageList
       messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
     } catch (error) {
       setLoading(false);
@@ -211,7 +220,7 @@ export default function Home() {
   const handleEnter = (e: any) => {
     if (e.key === 'Enter' && query) {
       handleSubmit(e);
-    } else if (e.key == 'Enter') {
+    } else if (e.key === 'Enter') {
       e.preventDefault();
     }
   };
@@ -222,290 +231,7 @@ export default function Home() {
         <LoadingState />
       ) : (
         <div>
-          <Transition.Root show={sidebarOpen} as={Fragment}>
-            <Dialog
-              as="div"
-              className="relative z-50 lg:hidden"
-              onClose={setSidebarOpen}
-            >
-              <Transition.Child
-                as={Fragment}
-                enter="transition-opacity ease-linear duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="transition-opacity ease-linear duration-300"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <div className="fixed inset-0 bg-gray-900/80" />
-              </Transition.Child>
-
-              <div className="fixed inset-0 flex">
-                <Transition.Child
-                  as={Fragment}
-                  enter="transition ease-in-out duration-300 transform"
-                  enterFrom="-translate-x-full"
-                  enterTo="translate-x-0"
-                  leave="transition ease-in-out duration-300 transform"
-                  leaveFrom="translate-x-0"
-                  leaveTo="-translate-x-full"
-                >
-                  <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                    <Transition.Child
-                      as={Fragment}
-                      enter="ease-in-out duration-300"
-                      enterFrom="opacity-0"
-                      enterTo="opacity-100"
-                      leave="ease-in-out duration-300"
-                      leaveFrom="opacity-100"
-                      leaveTo="opacity-0"
-                    >
-                      <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                        <button
-                          type="button"
-                          className="-m-2.5 p-2.5"
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <span className="sr-only">Close sidebar</span>
-                          <XMarkIcon
-                            className="h-6 w-6 text-white"
-                            aria-hidden="true"
-                          />
-                        </button>
-                      </div>
-                    </Transition.Child>
-                    {/* Sidebar component */}
-                    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 ring-1 ring-white/10">
-                      <div className="flex h-16 shrink-0 items-center"></div>
-                      <nav className="flex flex-1 flex-col">
-                        <ul
-                          role="list"
-                          className="flex flex-1 flex-col gap-y-7"
-                        >
-                          <li>
-                            <ul role="list" className="-mx-2 space-y-1">
-                              {/* mobile */}
-                              {/* new chat button */}
-                              {selectedNamespace && (
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 w-full mb-8"
-                                  onClick={async () => {
-                                    const newChatId = await createChat();
-                                    setChatId(newChatId);
-                                    setSelectedChatId(newChatId);
-                                  }}
-                                >
-                                  <PlusCircleIcon
-                                    className="-ml-0.5 h-5 w-5"
-                                    aria-hidden="true"
-                                  />
-                                  New chat
-                                </button>
-                              )}
-
-                              {/* new chat button */}
-                              <div className="text-xs font-semibold leading-6 text-gray-400">
-                                Your chats
-                              </div>
-                              {selectedNamespace ? (
-                                <ListOfChats
-                                  chatList={chatList}
-                                  selectedChatId={selectedChatId}
-                                  setChatId={setChatId}
-                                  setSelectedChatId={setSelectedChatId}
-                                  chatNames={chatNames}
-                                  updateChatName={updateChatName}
-                                  deleteChat={deleteChat}
-                                />
-                              ) : (
-                                <div className="text-xs font-semibold leading-6 text-red-400">
-                                  Select a namespace to display chats
-                                </div>
-                              )}
-                            </ul>
-                          </li>
-                          {/* mobile */}
-                          <ListOfNamespaces
-                            namespaces={namespaces}
-                            selectedNamespace={selectedNamespace}
-                            setSelectedNamespace={setSelectedNamespace}
-                          />
-                          {/* mobile */}
-                          <li className="mt-auto">
-                            <button
-                              className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
-                              onClick={() => router.push('/settings')}
-                            >
-                              <Cog6ToothIcon
-                                className="h-6 w-6 shrink-0"
-                                aria-hidden="true"
-                              />
-                              Settings
-                            </button>
-                          </li>
-                        </ul>
-                      </nav>
-                    </div>
-                  </Dialog.Panel>
-                </Transition.Child>
-              </div>
-            </Dialog>
-          </Transition.Root>
-
-          {/* Static sidebar for desktop */}
-          <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-            {/* Sidebar component, swap this element with another sidebar if you like */}
-            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 border-r border-gray-800">
-              <div className="flex h-16 shrink-0 items-center"></div>
-              <nav className="flex flex-1 flex-col">
-                <ul role="list" className="flex flex-1 flex-col gap-y-7">
-                  <li>
-                    {selectedNamespace && (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 w-full mb-8"
-                        onClick={async () => {
-                          const newChatId = await createChat();
-                          setChatId(newChatId);
-                          setSelectedChatId(newChatId);
-                        }}
-                      >
-                        <PlusCircleIcon
-                          className="-ml-0.5 h-5 w-5"
-                          aria-hidden="true"
-                        />
-                        New chat
-                      </button>
-                    )}
-
-                    <div className="text-xs font-semibold leading-6 text-gray-400">
-                      Your chats
-                    </div>
-                    {/* desktop */}
-                    {selectedNamespace && nameSpaceHasChats ? (
-                      <ListOfChats
-                        chatList={chatList}
-                        selectedChatId={selectedChatId}
-                        setChatId={setChatId}
-                        setSelectedChatId={setSelectedChatId}
-                        chatNames={chatNames}
-                        updateChatName={updateChatName}
-                        deleteChat={deleteChat}
-                      />
-                    ) : (
-                      <div className="text-xs font-semibold leading-6 text-red-400">
-                        {selectedNamespace
-                          ? 'No chats in this namespace'
-                          : 'Select a namespace to display chats'}
-                      </div>
-                    )}
-
-                    {/* desktop */}
-                  </li>
-                  {/* desktop */}
-                  <ListOfNamespaces
-                    namespaces={namespaces}
-                    selectedNamespace={selectedNamespace}
-                    setSelectedNamespace={setSelectedNamespace}
-                  />
-                  {/* desktop */}
-                  <li className="mt-auto">
-                    <button
-                      className="group w-full -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
-                      onClick={() => router.push('/settings')}
-                    >
-                      <Cog6ToothIcon
-                        className="h-6 w-6 shrink-0"
-                        aria-hidden="true"
-                      />
-                      Settings
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          </div>
-
-          <div className="lg:pl-72">
-            <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-800 bg-gray-900 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-              <button
-                type="button"
-                className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <span className="sr-only">Open sidebar</span>
-                <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-              </button>
-
-              {/* Separator */}
-              <div
-                className="h-6 w-px bg-gray-900/10 lg:hidden"
-                aria-hidden="true"
-              />
-
-              <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 items-center">
-                <p className="text-2xl font-semibold text-gray-100 text-center w-full">
-                  pdf-chatbot
-                </p>
-
-                <div className="flex items-center gap-x-4 lg:gap-x-6">
-                  {/* Separator */}
-                  <div
-                    className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-900/10"
-                    aria-hidden="true"
-                  />
-                  <ProfileDropdown
-                    userImage={userImage ? userImage : '/images/user.png'}
-                    userName={userName ? userName : 'User'}
-                    signOut={signOut}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <main className="flex flex-col h-full justify-between">
-              {nameSpaceHasChats && selectedNamespace ? (
-                <>
-                  <div className="overflow-y-auto">
-                    <MessageList
-                      messages={messages}
-                      loading={loading}
-                      messageListRef={messageListRef}
-                      userImage={userImage}
-                    />
-                  </div>
-
-                  <div className="sticky bottom-0">
-                    <ChatForm
-                      loading={loading}
-                      error={error}
-                      query={query}
-                      textAreaRef={textAreaRef}
-                      handleEnter={handleEnter}
-                      handleSubmit={handleSubmit}
-                      setQuery={setQuery}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-col items-center justify-center align-center h-screen px-4">
-                    <h1 className="text-xl md:text-3xl text-center font-semibold text-gray-100">
-                      Welcome to pdf-chatbot
-                    </h1>
-                    <p className="text-md md:text-xl text-center text-gray-100 mt-4">
-                      {!nameSpaceHasChats && selectedNamespace
-                        ? 'You have no chats in this namespace. Create a new chat to get started.'
-                        : !selectedNamespace
-                        ? 'Select a namespace to display chats'
-                        : 'You have no chats. Create a new chat to get started.'}
-                    </p>
-                  </div>
-                </>
-              )}
-            </main>
-          </div>
+          {/* Rest of the component */}
         </div>
       )}
     </>
