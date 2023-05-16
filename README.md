@@ -1,13 +1,16 @@
-# ChatPDF Plus: GPT-4 x Pinecone x LangChain x MongoDB
+# doc-chatbot: GPT-4 x Pinecone x LangChain x MongoDB
+
+**NOTE – the right-hand side contains a link to the deployed version of this app, but you won't be able to log in with Google if you try. I am using my own API keys there and therefore restrict the access only to myself. Follow the intructions below to run or deploy your own version.**
 
 ## Features
 
 - Create **multiple** topics to chat about
 - Google OAuth to log in and store chats in MongoDB associated with your email
-- Upload **any number of PDF files** to each topic
+- Upload **any number of files** to each topic
 - Create **any number of chats** (chat windows) for each topic
 - Upload files, convert them to embeddings, store the embeddings in a namespace and upload to Pinecone, and delete Pinecone namespaces **from within the browser**
 - Upload and automatically **retrieve chat history** for all chats using MongoDB
+- Supports `.pdf`, `.docx` and `.txt`
 
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
 ![Next JS](https://img.shields.io/badge/Next-black?style=for-the-badge&logo=next.js&logoColor=white)
@@ -17,13 +20,6 @@
 
 `+ LangChain and Pinecone`
 
----
-
-**Landing page**
-![Landing page](public/images/landing_page.png)
-
----
-
 **Main chat area**
 ![Main chat area](public/images/main_desktop.png)
 
@@ -32,12 +28,6 @@
 **Settings page**
 
 ![Settings page](public/images/settings_desktop.png)
-
----
-
-**Mobile layout**
-
-![Mobile layout](public/images/mobile.png)
 
 ---
 
@@ -58,25 +48,56 @@ That's why I published this as a standalone repo. Nevertheless, some parts of th
 
 ## Local setup
 
-### 1. Clone the repo
+### Clone the repo
 
 ```
 git clone https://github.com/dissorial/pdf-chatbot.git
 ```
 
-This repository has two branches: `master` and `old-master`. The `old-master` branch contains working code that you can run locally and has all the features except for Google OAuth. If you want to avoid setting up Google OAuth, clone that branch with:
+---
 
-```
-$ git clone https://github.com/dissorial/pdf-chatbot.git -b old-master
-```
+### Pinecone setup
 
-### 2. Install packages
+Create an account on Pinecone. Go to `Indexes` and `Create index`. Enter any name, put `1536` for `Dimensions` and leave the rest on default. Then go to `API keys` and `Create API key`.
+
+---
+
+### MongoDB setup
+
+Create an account on MongoDB. In your dashboard, click `New Project` and name it. Then, click `Create project`. You'll be redirected to `Database Deployments` page. Click `Build a database`, and choose `M0 FREE`. Choose any provider and region, but you can leave it as-is. At the bottom, give your cluster a name, and click `Create`.
+
+Username and password should be pre-filled here. Click `Create user`. In `IP access list`, click `Add my current API address`, then `Finish and close` and `Go to databases`. Next to your cluster, there will be a `Connect` button. Click in, then go to `Drivers`. You'll find your MongoDB_URI under `Add your connection string into your application code`. Copy this to your `env` and replace `<password>` with your password (the one used when you clicked 'Create user'). Done.
+
+---
+
+### Google Auth Setup
+
+Go to Google Developer Console and create a new project.
+
+#### OAuth conset screen
+
+- Navigate to `APIs & Serivces`, then `OAuth consent screen`. Click on `External`, then `Create`. Give the app a name, fill out the fields for emails/developer contact information and then continue. In the `Scopes` section, click `Add or remove scopes` and check `.../auth.userinfo.email`, then `Save and continue`. In the `Test users section`, add yourself (your email), then `Save and Continue` and then `Back to dashboard`.
+
+#### Credentials
+
+Go to `Credentials` (still under APIs and Services) and click `Create credentials`, then `OAuth Client ID`. Selectd `Web application` under `Application type` and give it any name.
+
+Under `Authorized JavaScript origins`, add `http://localhost:3000`.
+Under `Authorized redirect URIs`, add `http://localhost:3000/api/auth/callback/google`.
+
+Then `Create`. This will also show your Google Client ID and secret.
+
+---
+
+### Install packages
 
 ```
 yarn install
 ```
 
-### 3. Set up your `.env` file
+---
+
+### Set up your `.env` file
 
 - Rename `.env.example` to `.env`
 - Your `.env` file should look like this:
@@ -88,42 +109,46 @@ PINECONE_API_KEY=
 PINECONE_ENVIRONMENT=
 PINECONE_INDEX_NAME=
 
-MONGODB_URI=
+MONGODB_URI=''
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-NEXTAUTH_URL=
+
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=
+
 JWT_SECRET=
-ALLOWED_EMAIL_DOMAIN='@example.com'
+
+ALLOWED_EMAIL_DOMAIN='@gmail.com'
+
+NODE_ENV=development
 ```
 
-#### OpenAI API
+---
+
+### OpenAI API
 
 - Visit [OpenAI](https://help.openai.com/en/articles/4936850-where-do-i-find-my-secret-api-key) to retrieve API keys and insert into your `.env` file
 
-#### Pinecone
+### NextAuth Secret
 
-- Visit [Pinecone](https://pinecone.io/) to create and retrieve your API keys, and also retrieve your environment and index name from the dashboard.
+- You can generate this by running `npx nextauth secret` in your terminal.
 
-#### MongoDB
+### JWT Secret
 
-- Visit [MongoDB](https://mongodb.com/), create a database (free one is enough for these purposes) and retrieve your URI in Connect -> Drivers
+- You can generate this by running `npx nextauth jwt-secret` in your terminal.
 
-#### JWT
+### NextAuth URL
 
-- To generate your JWT_SECRET, you can run `openssl rand -base64 32` in terminal
+- Default is http://localhost:3000. In production, this should be the URL of your deployed app.
 
-#### Google OAuth (Client ID and secret)
+### Allowed email domain
 
-- Read [this guide](https://support.google.com/cloud/answer/6158849?hl=en) from Google
+- '@gmail.com' by default. If you want to use any email domain, remove `callback` from options in `pages/api/auth/[...nextauth].ts`
 
-#### NextAuth URL
+### Node environment
 
-- You can use `http://localhost:3000`
-
-#### Allowed email domain
-
-- Change '@example.com' to '@gmail.com' or other domains. If you want to use any email domain, remove `callback` from options in `pages/api/auth/[...nextauth].ts`
+- development by default. In production, set this to 'production' (without the quotes)
 
 ### Other
 
@@ -133,13 +158,13 @@ ALLOWED_EMAIL_DOMAIN='@example.com'
 
 ## Run the app
 
-Run `npm run dev`. Once the local dev environment launches, go to `Settings` in the bottom left corner. Upload your PDF files and give them a 'namespace'. Here, 'namespace' is synonymous with being the topic of your conversation. This way, you can upload multiple files to multiple namespaces, and maintain several conversations about different topics and documents.
+Run `npm run dev`. Once the local dev environment launches, log in with Google, and then go to `Settings` in the bottom left corner. Upload your files and give them a 'namespace'. Here, 'namespace' is synonymous with being the topic of your conversation. This way, you can upload multiple files to multiple namespaces, and maintain several conversations about different topics and documents.
 
 ---
 
-## Chatting with PDF files
+## Chatting with files
 
-If you retrun to the home page now, you should see your namespace on the left sidebar. Click on it, create a new chat and have a conversation with the PDF files embedded for that particular namespace.
+If you retrun to the home page now, you should see your namespace(s) on the left sidebar. Click on it, create a new chat and have a conversation with the files embedded for that particular namespace.
 
 ---
 
@@ -148,7 +173,7 @@ If you retrun to the home page now, you should see your namespace on the left si
 ### General errors
 
 - Make sure that you are running the latest version of Node. To check your version run node -v.
-- If you're encountering issues with a specific PDF, try converting it to text first or try a different PDF file. It's possible that the PDF is corrupted, scanned, or requires OCR to be converted to text.
+- If you're encountering issues with a specific file, try converting it to text first or try a different file. It's possible that the file is corrupted, scanned, or requires OCR to be converted to text.
 - Consider logging the env variables and ensure that they are properly exposed.
 - Confirm that you're using the same versions of LangChain and Pinecone as this repository.
 - Check that you've created an .env file that contains your valid API keys, environment, and index name.
